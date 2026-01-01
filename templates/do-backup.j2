@@ -13,7 +13,7 @@ folder_path="{{ do_backup_folder_path }}"
 bucket_name="{{ do_spaces_bucket_name }}"
 region="{{ do_spaces_region }}"
 include_web_folder="{{ do_include_web_folder }}"
-project_id="{{ site_env['levcharity_portal_api_client_id_' + env] }}"
+project_id="{{ lookup('vars', 'levcharity_portal_api_client_id_' + env, default=lookup('vars', 'LEVCHARITY_PORTAL_API_CLIENT_ID_' + env | upper, default='')) }}"
 aws_path="$(which aws)"
 
 # DO Spaces endpoint
