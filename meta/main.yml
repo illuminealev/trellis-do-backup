@@ -1,0 +1,20 @@
+galaxy_info:
+  author: Tomek
+  description: Digital Ocean Spaces backup role for Trellis WordPress sites
+  license: MIT
+  min_ansible_version: 2.1
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+  galaxy_tags:
+    - backup
+    - wordpress
+    - digitalocean
+    - spaces
+    - trellis
+
+dependencies: []

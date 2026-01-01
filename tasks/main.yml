@@ -1,0 +1,73 @@
+---
+- name: "Install DO Spaces CLI dependencies"
+  apt:
+    pkg:
+      - curl
+      - unzip
+      - bc
+    update_cache: yes
+    state: latest
+
+- name: Download AWS CLI v2
+  get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscliv2.zip
+
+- name: Unzip AWS CLI package
+  unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp
+    remote_src: yes
+
+- name: Install or update AWS CLI
+  command: /tmp/aws/install --update
+
+- name: "Create DO Spaces config dir"
+  file:
+    path: /root/.do-spaces
+    state: directory
+    mode: '0750'
+
+- name: "Create DO Backups dir"
+  file:
+    path: /opt/do-backups
+    state: directory
+    mode: '0750'
+
+- name: "Create DO script dir"
+  file:
+    path: /opt/do-scripts
+    state: directory
+    mode: '0750'
+
+- name: "Copy template DO Spaces files - credentials"
+  template:
+    src: "do-credentials.j2"
+    dest: "/root/.do-spaces/credentials"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: "Copy template DO Spaces files - config"
+  template:
+    src: "do-config.j2"
+    dest: "/root/.do-spaces/config"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: "Copy DO backup script"
+  template:
+    src: "do-backup.j2"
+    dest: "/opt/do-scripts/do-backup.sh"
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: "Create DO backup cronjob"
+  cron:
+    name: "DO Spaces Backup script for {{ do_backup_db_name }}"
+    minute: "0"
+    hour: "*"
+    user: root
+    job: '/bin/bash -c "/opt/do-scripts/do-backup.sh"'

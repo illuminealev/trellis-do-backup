@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Digital Ocean Spaces Backup Script
+# CRITICAL: This script uses sync WITHOUT --delete to preserve existing files
+
+# vars declaration
+env_name=$(hostname)
+timestamp=$(date +"%Y-%m-%d-%H-%M")
+iso_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.000000Z")
+
+db_name="{{ do_backup_db_name }}"
+folder_path="{{ do_backup_folder_path }}"
+bucket_name="{{ do_spaces_bucket_name }}"
+region="{{ do_spaces_region }}"
+include_web_folder="{{ do_include_web_folder }}"
+project_id="{{ levcharity_portal_api_client_id_staging if env == 'staging' else levcharity_portal_api_client_id_production }}"
+aws_path="$(which aws)"
+
+# DO Spaces endpoint
+endpoint_url="https://${region}.digitaloceanspaces.com"
+
+# Use separate AWS config for DO Spaces (avoids conflicts with AWS credentials)
+export AWS_CONFIG_FILE="/root/.do-spaces/config"
+export AWS_SHARED_CREDENTIALS_FILE="/root/.do-spaces/credentials"
+
+# Create local backup folder
+mkdir -p /opt/do-backups/temp
+cd /opt/do-backups/temp
+
+# Dump the DB. Note .my.cnf needs to be created, otherwise won't be able to dump
+mysqldump "$db_name" > "$db_name.sql"
+
+# Compress SQL file with timestamp as filename
+tar -zcvf ${timestamp}.tar.gz $db_name.sql
+
+# Remove the SQL file to save space
+rm -f ./$db_name.sql
+
+# Get DB backup size in bytes
+db_backup_size=$(stat -c%s "/opt/do-backups/temp/${timestamp}.tar.gz" 2>/dev/null || stat -f%z "/opt/do-backups/temp/${timestamp}.tar.gz" 2>/dev/null)
+
+# Upload database backup to DO Spaces: bucket/hostname/databases/YYYY-MM-DD-HH-MM.tar.gz
+$aws_path s3 cp /opt/do-backups/temp/${timestamp}.tar.gz \
+    s3://$bucket_name/$env_name/databases/ \
+    --endpoint-url "$endpoint_url"
+
+# Initialize total storage size with DB backup
+total_size_bytes=$db_backup_size
+
+# Sync web folder if enabled
+# IMPORTANT: NO --delete flag to preserve existing files in the bucket
+if [[ "${include_web_folder,,}" == "true" ]]; then
+    # Get folder size before sync
+    folder_size=$(du -sb "$folder_path" 2>/dev/null | cut -f1 || du -sk "$folder_path" 2>/dev/null | awk '{print $1 * 1024}')
+    total_size_bytes=$((total_size_bytes + folder_size))
+
+    # Sync to bucket/hostname/web-shared/
+    $aws_path s3 sync "$folder_path" \
+        s3://$bucket_name/$env_name/web-shared/ \
+        --endpoint-url "$endpoint_url"
+fi
+
+# Calculate storage size in GB (with 2 decimal places)
+storage_size_gb=$(echo "scale=2; $total_size_bytes / 1073741824" | bc)
+
+# Determine include_media value
+if [[ "${include_web_folder,,}" == "true" ]]; then
+    include_media="true"
+else
+    include_media="false"
+fi
+
+# Send POST request to portal API
+curl -s -X POST "https://portal.levcharity.com/api/v1/backup/${project_id}" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"include_media\": ${include_media},
+        \"storage_size\": \"${storage_size_gb}\",
+        \"created_at\": \"${iso_timestamp}\",
+        \"updated_at\": \"${iso_timestamp}\"
+    }"
+
+# Cleanup local backup files
+cd /opt/do-backups
+rm -rf /opt/do-backups/*
