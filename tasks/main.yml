@@ -67,7 +67,7 @@
 - name: "Create DO backup cronjob"
   cron:
     name: "DO Spaces Backup script for {{ do_backup_db_name }}"
-    minute: "0"
-    hour: "*"
+    minute: "{{ range(0, 59) | random }}"
+    hour: "4"
     user: root
     job: '/bin/bash -c "/opt/do-scripts/do-backup.sh"'
