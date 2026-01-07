@@ -12,7 +12,6 @@ folder_path="{{ do_backup_folder_path }}"
 bucket_name="{{ do_spaces_bucket_name }}"
 region="{{ do_spaces_region }}"
 include_web_folder="{{ do_include_web_folder }}"
-project_id="{{ lookup('vars', 'levcharity_portal_api_client_id_' + env, default=lookup('vars', 'LEVCHARITY_PORTAL_API_CLIENT_ID_' + env | upper, default='')) }}"
 aws_path="$(which aws)"
 
 # DO Spaces endpoint
@@ -48,20 +47,6 @@ if [[ "${include_web_folder,,}" == "true" ]]; then
         s3://$bucket_name/$env_name/web-shared/ \
         --endpoint-url "$endpoint_url"
 fi
-
-# Determine include_media value
-if [[ "${include_web_folder,,}" == "true" ]]; then
-    include_media="true"
-else
-    include_media="false"
-fi
-
-# Send POST request to portal API
-curl -s -X POST "https://portal.levcharity.com/api/v1/backup/${project_id}" \
-    -H "Content-Type: application/json" \
-    -d "{
-        \"include_media\": ${include_media}
-    }"
 
 # Cleanup local backup files
 cd /opt/do-backups

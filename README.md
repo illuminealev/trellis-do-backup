@@ -8,7 +8,6 @@ This Ansible role provides ability to save trellis backup to Digital Ocean Space
 - Optional uploads/shared folder sync
 - S3-compatible API via AWS CLI
 - Preserves existing files (no deletion from bucket)
-- Portal notification after successful backup
 
 ## Installation
 
@@ -36,10 +35,6 @@ do_include_web_folder: "false"  # set to "true" to sync uploads
 # Use either uppercase OR lowercase (both supported):
 DO_ACCESS_KEY: "your-spaces-access-key"      # or: do_access_key
 DO_SECRET_KEY: "your-spaces-secret-key"      # or: do_secret_key
-
-# Portal API project IDs (already exist in your vault):
-levcharity_portal_api_client_id_staging: 27
-levcharity_portal_api_client_id_production: 27
 ```
 
 ## Backup Structure
@@ -61,14 +56,6 @@ s3://bucket_name/
 ## Cron Schedule
 
 Runs daily at 4 AM (randomized minute) as root user.
-
-## Portal Notification
-
-After successful backup, sends POST to `https://portal.levcharity.com/api/v1/backup/{project_id}` with:
-- `include_media`: boolean
-- `storage_size`: string (GB)
-- `created_at`: ISO 8601 timestamp
-- `updated_at`: ISO 8601 timestamp
 
 ## Author
 
