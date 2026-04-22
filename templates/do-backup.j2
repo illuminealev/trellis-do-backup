@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 # Digital Ocean Spaces Backup Script
 # CRITICAL: This script uses sync WITHOUT --delete to preserve existing files
@@ -12,7 +13,8 @@ folder_path="{{ do_backup_folder_path }}"
 bucket_name="{{ do_spaces_bucket_name }}"
 region="{{ do_spaces_region }}"
 include_web_folder="{{ do_include_web_folder }}"
-aws_path="$(which aws)"
+# Hardcoded: cron's PATH typically excludes /usr/local/bin where awscli v2 installs
+aws_path="/usr/local/bin/aws"
 
 # DO Spaces endpoint
 endpoint_url="https://${region}.digitaloceanspaces.com"
